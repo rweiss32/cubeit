@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
+  <!-- VERSION: 0.1.0 -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -142,6 +143,13 @@
     .gameover-title { font-size: 3rem; font-weight: 900; margin-bottom: 8px; }
     .final-score { font-size: 1.4rem; color: #bbb; }
     .final-score span { color: #ffd200; font-weight: 700; }
+
+    /* ── VERSION BADGE ── */
+    #version-badge {
+      position: fixed; bottom: 10px; left: 14px;
+      font-size: 0.72rem; color: #444; font-family: monospace;
+      pointer-events: none; user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -236,7 +244,11 @@
   <button class="btn btn-gold" style="margin-top:12px" onclick="startGame()">שחק שוב ↺</button>
 </div>
 
+<div id="version-badge"></div>
+
 <script>
+const VERSION = '0.1.0';
+document.getElementById('version-badge').textContent = 'v' + VERSION;
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
