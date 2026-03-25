@@ -6,6 +6,12 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.7.0] 2026-03-25 — External categories file
+
+- Categories moved to external `categories.js` (easy to edit without touching game code)
+- All 35 real game categories with word lists for CPU player
+- Logo artifact removed, responsive sizing for mobile (min(60%, 544px))
+
 ## [0.6.0] 2026-03-25 — Real logo image
 
 - Replaced CSS tile divs with logo_heb.png (1417×363 RGBA)
