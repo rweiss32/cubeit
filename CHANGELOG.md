@@ -6,6 +6,22 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.4.0] 2026-03-25 — Joker letter assignment
+
+- When a submitted word contains joker tiles, a modal appears asking the player to pick a letter for each joker
+- Word preview in the modal highlights the current joker being assigned
+- Multiple jokers handled sequentially (joker 1 of N, then 2 of N...)
+- Resolved word is then validated via Wiktionary as usual
+
+## [0.3.0] 2026-03-25 — Hebrew word validation
+
+- Player's submitted word is validated against Hebrew Wiktionary API
+- "בודק במילון..." spinner shown during async check
+- Submit and Clear buttons disabled while checking
+- Invalid words are rejected with a clear error message
+- Network errors: word is accepted with a warning (graceful fallback)
+- Results cached per session — repeated words skip the API call
+
 ## [0.2.0] 2026-03-25 — Logo banner
 
 - Persistent top header on all screens with colored 3D-style cube tiles spelling קוביאות

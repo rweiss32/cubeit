@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.2.0 -->
+  <!-- VERSION: 0.4.0 -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -144,10 +144,53 @@
     .btn-submit { flex: 1; background: #4ecca3; color: #0a1a14; font-weight: 700;
                   border-radius: 10px; padding: 12px; font-size: 1rem; font-family: inherit;
                   border: none; cursor: pointer; transition: background .15s; }
-    .btn-submit:hover { background: #3db893; }
+    .btn-submit:hover:not(:disabled) { background: #3db893; }
+    .btn-submit:disabled { background: #2a4a40; color: #4a8a78; cursor: not-allowed; }
+    .checking-msg { color: #ffd200; font-size: 0.88rem; min-height: 20px; }
     .btn-clear { background: #2a2a3e; color: #888; border-radius: 10px; padding: 12px 16px;
                  font-size: 0.9rem; font-family: inherit; border: none; cursor: pointer; }
     .btn-clear:hover { background: #3a3a50; color: #ccc; }
+
+    /* ── JOKER MODAL ── */
+    #joker-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,.75);
+      align-items: center; justify-content: center;
+    }
+    #joker-modal.open { display: flex; }
+    .joker-box {
+      background: #1c1c2e; border-radius: 18px;
+      padding: 28px 24px; max-width: 420px; width: 90%;
+      text-align: center; border: 2px solid #8048d0;
+    }
+    .joker-box h3 { font-size: 1.2rem; color: #ffd200; margin-bottom: 4px; }
+    .joker-box p  { font-size: 0.88rem; color: #888; margin-bottom: 18px; }
+    .joker-word-preview {
+      display: flex; gap: 6px; justify-content: center;
+      flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .joker-word-tile {
+      width: 44px; height: 44px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 700;
+    }
+    .jwt-normal { background: #f5e6c8; color: #2a1a00; }
+    .jwt-joker  { background: #8048d0; color: #fff; animation: jokerpulse 1s infinite alternate; }
+    .jwt-assigned { background: #4ecca3; color: #0a1a14; }
+    @keyframes jokerpulse { from { opacity:1; } to { opacity:.5; } }
+    .letter-grid {
+      display: grid; grid-template-columns: repeat(6, 1fr);
+      gap: 7px; direction: rtl;
+    }
+    .letter-pick-btn {
+      padding: 10px 4px; border-radius: 8px;
+      border: 2px solid transparent;
+      background: #2a2a3e; color: #eee;
+      font-size: 1.2rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: all .1s;
+    }
+    .letter-pick-btn:hover { background: #8048d0; border-color: #a070f0; color: #fff; }
 
     /* ── RESULT ── */
     #screen-result { text-align: center; }
@@ -248,9 +291,10 @@
       <span class="word-preview-empty">בחר אותיות למעלה...</span>
     </div>
     <div class="error-msg" id="g-error"></div>
+    <div class="checking-msg" id="g-checking"></div>
     <div class="action-row">
-      <button class="btn-clear" onclick="clearWord()">נקה ✕</button>
-      <button class="btn-submit" onclick="submitWord()">שלח מילה ✓</button>
+      <button class="btn-clear" id="btn-clear" onclick="clearWord()">נקה ✕</button>
+      <button class="btn-submit" id="btn-submit" onclick="submitWord()">שלח מילה ✓</button>
     </div>
   </div>
 </div>
@@ -290,8 +334,18 @@
   <button class="btn btn-gold" style="margin-top:12px" onclick="startGame()">שחק שוב ↺</button>
 </div>
 
+<!-- ══════════════ JOKER MODAL ══════════════ -->
+<div id="joker-modal">
+  <div class="joker-box">
+    <h3>הג'וקר מייצג איזו אות?</h3>
+    <p id="joker-modal-subtitle"></p>
+    <div class="joker-word-preview" id="joker-word-preview"></div>
+    <div class="letter-grid" id="letter-grid"></div>
+  </div>
+</div>
+
 <script>
-const VERSION = '0.2.0';
+const VERSION = '0.4.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 // ══════════════════════════════════════════════
 //  CONSTANTS
@@ -548,15 +602,128 @@ function clearWord() {
 }
 
 // ══════════════════════════════════════════════
+//  WIKTIONARY VALIDATION
+// ══════════════════════════════════════════════
+
+const wordCache = new Map(); // cache: normalizedWord → true/false/null(network error)
+
+async function isHebrewWord(word) {
+  const key = norm(word);
+  if (wordCache.has(key)) return wordCache.get(key);
+
+  try {
+    const url = `https://he.wiktionary.org/w/api.php?action=query&titles=${encodeURIComponent(key)}&format=json&origin=*`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const pages = data.query.pages;
+    const valid = !Object.prototype.hasOwnProperty.call(pages, '-1');
+    wordCache.set(key, valid);
+    return valid;
+  } catch {
+    wordCache.set(key, null); // null = network error
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════
+//  JOKER ASSIGNMENT
+// ══════════════════════════════════════════════
+
+const HE_LETTERS = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת'];
+
+// Returns a Promise that resolves with the letter the player picks
+function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('joker-modal');
+
+    // Subtitle
+    document.getElementById('joker-modal-subtitle').textContent =
+      totalJokers > 1 ? `ג'וקר ${jokerNum} מתוך ${totalJokers}` : 'בחר אות מהרשימה';
+
+    // Word preview — highlight current joker
+    const preview = document.getElementById('joker-word-preview');
+    preview.innerHTML = '';
+    tiles.forEach((letter, idx) => {
+      const d = document.createElement('div');
+      if (letter === '★') {
+        d.className = 'joker-word-tile ' + (idx === jokerWordPos ? 'jwt-joker' : 'jwt-assigned');
+        d.textContent = idx === jokerWordPos ? '★' : (d._assigned || '?');
+      } else {
+        d.className = 'joker-word-tile jwt-normal';
+        d.textContent = letter;
+      }
+      preview.appendChild(d);
+    });
+
+    // Letter grid
+    const grid = document.getElementById('letter-grid');
+    grid.innerHTML = '';
+    HE_LETTERS.forEach(letter => {
+      const btn = document.createElement('button');
+      btn.className = 'letter-pick-btn';
+      btn.textContent = letter;
+      btn.onclick = () => {
+        modal.classList.remove('open');
+        resolve(letter);
+      };
+      grid.appendChild(btn);
+    });
+
+    modal.classList.add('open');
+  });
+}
+
+// Resolves jokers in the tiles array, returns final letter array
+async function resolveJokers(tiles) {
+  const result = [...tiles];
+  const jokerPositions = result.map((t, i) => t === '★' ? i : -1).filter(i => i !== -1);
+  let jokerNum = 1;
+  for (const pos of jokerPositions) {
+    const chosen = await askJokerLetter(result, pos, jokerPositions.length, jokerNum++);
+    result[pos] = chosen;
+  }
+  return result;
+}
+
+// ══════════════════════════════════════════════
 //  SUBMIT
 // ══════════════════════════════════════════════
 
-function submitWord() {
-  const word = state.selectedIndices.map(i => state.playerTiles[i]).join('');
-  if (word.length < 2) {
+function setSubmitLocked(locked) {
+  document.getElementById('btn-submit').disabled = locked;
+  document.getElementById('btn-clear').disabled = locked;
+}
+
+async function submitWord() {
+  const rawTiles = state.selectedIndices.map(i => state.playerTiles[i]);
+  if (rawTiles.length < 2) {
     document.getElementById('g-error').textContent = 'מילה חייבת להכיל לפחות 2 אותיות!';
     return;
   }
+
+  // Resolve jokers first (if any)
+  const hasJokers = rawTiles.includes('★');
+  const resolvedTiles = hasJokers ? await resolveJokers(rawTiles) : rawTiles;
+  const word = resolvedTiles.join('');
+
+  // Lock UI and validate
+  setSubmitLocked(true);
+  document.getElementById('g-error').textContent = '';
+  document.getElementById('g-checking').textContent = '🔍 בודק במילון...';
+
+  const result = await isHebrewWord(word);
+
+  document.getElementById('g-checking').textContent = '';
+  setSubmitLocked(false);
+
+  if (result === false) {
+    document.getElementById('g-error').textContent = `"${norm(word)}" לא נמצאה במילון. נסה מילה אחרת!`;
+    return;
+  }
+  if (result === null) {
+    document.getElementById('g-error').textContent = '⚠️ לא ניתן לאמת — המילה התקבלה';
+  }
+
   clearInterval(state.timerHandle);
   endRound(word);
 }
