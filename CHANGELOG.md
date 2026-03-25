@@ -6,6 +6,12 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.8.0] 2026-03-25 — Light mode + dark mode support
+
+- White background by default
+- Automatically switches to dark theme when OS is in dark mode
+- Uses CSS custom properties for all theme-sensitive colors
+
 ## [0.7.0] 2026-03-25 — External categories file
 
 - Categories moved to external `categories.js` (easy to edit without touching game code)
