@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.4.0 -->
+  <!-- VERSION: 0.5.0 -->
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -53,10 +53,10 @@
     .logo-tile:nth-child(6) { transform: rotate( 2deg) translateY(-2px); }
     .logo-tile:nth-child(7) { transform: rotate(-3deg) translateY(3px); }
 
-    .header-subtitle { font-size: 0.7rem; color: #555; letter-spacing: 1px; text-align: center; margin-top: 4px; }
+    .header-subtitle { font-size: 0.9rem; color: #555; letter-spacing: 1px; text-align: center; margin-top: 4px; }
     .header-version {
       position: absolute; bottom: 8px; left: 14px;
-      font-size: 0.68rem; color: #333; font-family: monospace;
+      font-size: 0.98rem; color: #333; font-family: monospace;
     }
 
     .screen { display: none; width: 100%; max-width: 720px; }
@@ -192,6 +192,34 @@
     }
     .letter-pick-btn:hover { background: #8048d0; border-color: #a070f0; color: #fff; }
 
+    /* ── PURCHASE CTA ── */
+    .cta-box {
+      width: 100%; border-radius: 14px; padding: 16px 20px;
+      background: linear-gradient(135deg, #1a2a1a, #1a3a2a);
+      border: 1px solid #2a6a3a;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .cta-box.cta-gameover {
+      background: linear-gradient(135deg, #1e2a0a, #2a3a10);
+      border-color: #4a7a20; padding: 20px 24px;
+      flex-direction: column; text-align: center;
+    }
+    .cta-text { font-size: 0.9rem; color: #aaa; line-height: 1.5; }
+    .cta-text strong { color: #eee; display: block; font-size: 1rem; margin-bottom: 2px; }
+    .cta-gameover .cta-text { font-size: 1rem; }
+    .cta-gameover .cta-text strong { font-size: 1.2rem; color: #ffd200; margin-bottom: 6px; }
+    .btn-cta {
+      white-space: nowrap; flex-shrink: 0;
+      background: linear-gradient(135deg, #4a9a30, #6aba40);
+      color: #fff; font-weight: 700; border: none;
+      border-radius: 50px; padding: 10px 20px;
+      font-size: 0.95rem; font-family: inherit;
+      cursor: pointer; text-decoration: none;
+      display: inline-block; transition: transform .15s, box-shadow .15s;
+    }
+    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 4px 16px #4a9a3066; }
+    .cta-gameover .btn-cta { padding: 14px 32px; font-size: 1.1rem; margin-top: 4px; }
+
     /* ── RESULT ── */
     #screen-result { text-align: center; }
     .result-banner {
@@ -256,6 +284,13 @@
     • <strong>5 סיבובים</strong> — מי שאסף יותר קלפים מנצח!
   </div>
   <button class="btn btn-gold" onclick="startGame()">התחל משחק ▶</button>
+  <div class="cta-box">
+    <div class="cta-text">
+      <strong>🎲 רוצה את המשחק המלא?</strong>
+      המשחק הפיזי כולל 62 קוביות, 40 קלפי הגדרה ו-3 סגנונות משחק
+    </div>
+    <a class="btn-cta" href="https://www.cube-it.co.il/" target="_blank" rel="noopener">לרכישה ←</a>
+  </div>
 </div>
 
 <!-- ══════════════ GAME ══════════════ -->
@@ -332,6 +367,13 @@
   <div class="gameover-title" id="go-title">—</div>
   <div class="final-score" id="go-score"></div>
   <button class="btn btn-gold" style="margin-top:12px" onclick="startGame()">שחק שוב ↺</button>
+  <div class="cta-box cta-gameover">
+    <div class="cta-text">
+      <strong>🎲 אהבת? קנה את הגרסה המלאה!</strong>
+      המשחק הפיזי של קוביאות כולל 62 קוביות, 40 קלפי הגדרה, 3 סגנונות משחק ועד 4 שחקנים
+    </div>
+    <a class="btn-cta" href="https://www.cube-it.co.il/" target="_blank" rel="noopener">לרכישה באתר ←</a>
+  </div>
 </div>
 
 <!-- ══════════════ JOKER MODAL ══════════════ -->
@@ -345,7 +387,7 @@
 </div>
 
 <script>
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 // ══════════════════════════════════════════════
 //  CONSTANTS

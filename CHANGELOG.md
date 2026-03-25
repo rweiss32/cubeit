@@ -6,6 +6,12 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.5.0] 2026-03-25 — Purchase CTA
+
+- Start screen: subtle banner linking to cube-it.co.il with a short product pitch
+- Game-over screen: prominent CTA after the game ends ("אהבת? קנה את הגרסה המלאה!")
+- Both links open in a new tab
+
 ## [0.4.0] 2026-03-25 — Joker letter assignment
 
 - When a submitted word contains joker tiles, a modal appears asking the player to pick a letter for each joker
