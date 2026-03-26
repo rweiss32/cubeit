@@ -1,0 +1,14 @@
+#!/bin/sh
+# Pre-push hook — runs automatically before every git push
+# Install once with: git config core.hooksPath .githooks
+
+echo "🔍 Running pre-push checks..."
+
+# 1. Validate words.txt and rebuild categories.js
+node tools/convert_lists_tool.js txt2js
+if [ $? -ne 0 ]; then
+  echo "❌ words.txt validation failed. Fix errors above before pushing."
+  exit 1
+fi
+
+echo "✅ All checks passed."
