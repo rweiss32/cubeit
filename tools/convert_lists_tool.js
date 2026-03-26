@@ -3,8 +3,18 @@
  * convert_lists_tool.js — convert between categories.txt and categories.js
  *
  * Usage:
- *   node tools/convert_lists_tool.js txt2js   — data/categories.txt  → data/categories.js
- *   node tools/convert_lists_tool.js js2txt   — data/categories.js → data/categories.txt
+ *   node tools/convert_lists_tool.js txt2js              — data/categories.txt → data/categories.js
+ *   node tools/convert_lists_tool.js js2txt              — data/categories.js  → data/categories.txt
+ *   node tools/convert_lists_tool.js merge <file.txt>    — merge file.txt into data/categories.txt
+ *   node tools/convert_lists_tool.js merge <file.txt> -v — same, with verbose output
+ *
+ * merge behaviour:
+ *   - New category (name not in categories.txt)  → appended at the end
+ *   - Existing category (same name)              → words added, duplicates silently skipped
+ *   - Category in categories.txt but not in file → untouched
+ *   - Validation runs before any file is written; aborts on error
+ *   - The input file is never modified
+ *   -v prints per-category detail: added words, skipped duplicates, no-change categories
  *
  * categories.txt format:
  *   # Category name | hint text (hint is optional)
@@ -12,7 +22,7 @@
  *   word9, word10, ...
  *   (blank line separates categories — multiple words per line, comma-separated)
  *
- * Validation (applied in txt2js):
+ * Validation (applied in txt2js and merge):
  *   - Only Hebrew letters (א-ת, including final forms)
  *   - Max 8 letters per word
  *   - No duplicates within a category
@@ -54,7 +64,7 @@ function js2txt() {
 
   // Evaluate the file to get window.CATEGORIES_DATA
   const sandbox = { window: {} };
-  const code = raw.replace(/^window\./, 'sandbox.window.');
+  const code = raw.replace(/\bwindow\./g, 'sandbox.window.');
   try {
     new Function('sandbox', code)(sandbox); // eslint-disable-line no-new-func
   } catch (e) {
@@ -68,38 +78,25 @@ function js2txt() {
     process.exit(1);
   }
 
-  const lines = [
-    '## קוביאות — רשימת מילים לפי קטגוריות',
-    '## פורמט: שורת כותרת מתחילה ב-#  ואחריה שם קטגוריה | רמז (רמז הוא אופציונלי)',
-    '## מילים מופרדות בפסיקים, מספר מילים בכל שורה. שורה ריקה מפרידה בין קטגוריות.',
-    '',
-  ];
-
-  for (const cat of data) {
-    const header = cat.description
-      ? `# ${cat.category} | ${cat.description}`
-      : `# ${cat.category}`;
-    lines.push(header);
-    const words = (cat.words || []).map(finalForm);
-    for (let i = 0; i < words.length; i += 8) {
-      lines.push(words.slice(i, i + 8).join(','));
-    }
-    lines.push('');
-  }
-
-  fs.writeFileSync(WORDS_TXT, lines.join('\n'), 'utf8');
+  const cats = data.map(c => ({
+    category: c.category, description: c.description || '',
+    words: (c.words || []), seen: new Set((c.words || []).map(norm)),
+  }));
+  fs.writeFileSync(WORDS_TXT, serializeTxt(cats), 'utf8');
   console.log(`✓ Wrote ${data.length} categories to categories.txt`);
 }
 
-// ─── txt2js ────────────────────────────────────────────────────────────────
+// ─── parseTxt ──────────────────────────────────────────────────────────────
+// Parse a categories.txt file. Returns { categories, errors }.
+// categories: [{ category, description, words, seen }]
 
-function txt2js() {
-  const raw = fs.readFileSync(WORDS_TXT, 'utf8');
+function parseTxt(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8');
   const lines = raw.split(/\r?\n/);
 
   const categories = [];
   let current = null;
-  const allErrors = [];
+  const errors = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -108,13 +105,12 @@ function txt2js() {
     if (!line || line.startsWith('##')) continue;
 
     if (line.startsWith('#')) {
-      // Header line — start new category
       const body = line.slice(1).trim();
       const [categoryRaw, ...hintParts] = body.split('|');
       const category = categoryRaw.trim();
       const description = hintParts.join('|').trim();
       if (!category) {
-        allErrors.push(`line ${lineNum}: empty category name`);
+        errors.push(`line ${lineNum}: empty category name`);
         continue;
       }
       current = { category, description, words: [], seen: new Set() };
@@ -123,21 +119,20 @@ function txt2js() {
     }
 
     if (!current) {
-      allErrors.push(`line ${lineNum}: word "${line}" appears before any category header`);
+      errors.push(`line ${lineNum}: word "${line}" appears before any category header`);
       continue;
     }
 
-    // Word line — comma-separated (spaces around commas are ignored)
     const words = line.split(',').map(w => w.trim()).filter(Boolean);
     for (const raw of words) {
-      const word = finalForm(raw);  // normalise to correct final form
-      const errors = validateWord(word, current.category, lineNum);
-      allErrors.push(...errors);
-      if (errors.length > 0) continue;
+      const word = finalForm(raw);
+      const wordErrors = validateWord(word, current.category, lineNum);
+      errors.push(...wordErrors);
+      if (wordErrors.length > 0) continue;
 
-      const key = norm(word);  // deduplicate ignoring final-letter variants
+      const key = norm(word);
       if (current.seen.has(key)) {
-        allErrors.push(`line ${lineNum}: duplicate word "${word}" in [${current.category}]`);
+        errors.push(`line ${lineNum}: duplicate word "${word}" in [${current.category}]`);
         continue;
       }
       current.seen.add(key);
@@ -145,9 +140,36 @@ function txt2js() {
     }
   }
 
-  if (allErrors.length > 0) {
-    console.error(`\n✗ Validation failed (${allErrors.length} error${allErrors.length > 1 ? 's' : ''}):\n`);
-    allErrors.forEach(e => console.error('  ' + e));
+  return { categories, errors };
+}
+
+// ─── serializeTxt ──────────────────────────────────────────────────────────
+// Serialize categories array back to categories.txt format.
+
+function serializeTxt(categories) {
+  const lines = [
+    '## קוביאות — רשימת מילים לפי קטגוריות',
+    '## פורמט: שורת כותרת מתחילה ב-#  ואחריה שם קטגוריה | רמז (רמז הוא אופציונלי)',
+    '## מילים מופרדות בפסיקים, מספר מילים בכל שורה. שורה ריקה מפרידה בין קטגוריות.',
+    '',
+  ];
+  for (const cat of categories) {
+    lines.push(cat.description ? `# ${cat.category} | ${cat.description}` : `# ${cat.category}`);
+    const words = cat.words.map(finalForm);
+    for (let i = 0; i < words.length; i += 8) lines.push(words.slice(i, i + 8).join(','));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+// ─── txt2js ────────────────────────────────────────────────────────────────
+
+function txt2js() {
+  const { categories, errors } = parseTxt(WORDS_TXT);
+
+  if (errors.length > 0) {
+    console.error(`\n✗ Validation failed (${errors.length} error${errors.length > 1 ? 's' : ''}):\n`);
+    errors.forEach(e => console.error('  ' + e));
     process.exit(1);
   }
 
@@ -172,14 +194,109 @@ function txt2js() {
   console.log(`✓ Wrote ${categories.length} categories, ${total} words to categories.js`);
 }
 
+// ─── merge ─────────────────────────────────────────────────────────────────
+
+function merge(inputPath, verbose) {
+  if (!fs.existsSync(inputPath)) {
+    console.error(`✗ File not found: ${inputPath}`);
+    process.exit(1);
+  }
+
+  // Parse both files
+  const base  = parseTxt(WORDS_TXT);
+  const input = parseTxt(inputPath);
+
+  if (base.errors.length > 0) {
+    console.error(`✗ Validation errors in categories.txt:`);
+    base.errors.forEach(e => console.error('  ' + e));
+    process.exit(1);
+  }
+  if (input.errors.length > 0) {
+    console.error(`✗ Validation errors in ${inputPath}:`);
+    input.errors.forEach(e => console.error('  ' + e));
+    process.exit(1);
+  }
+  if (input.categories.length === 0) {
+    console.warn('⚠️  No categories found in input file — nothing to merge.');
+    process.exit(0);
+  }
+
+  // Build lookup map of existing categories by name
+  const baseMap = new Map(base.categories.map(c => [c.category, c]));
+
+  let newCats = 0, mergedCats = 0, addedWords = 0, skippedWords = 0;
+
+  for (const incoming of input.categories) {
+    const existing = baseMap.get(incoming.category);
+
+    if (!existing) {
+      // New category — append
+      base.categories.push(incoming);
+      baseMap.set(incoming.category, incoming);
+      newCats++;
+      if (verbose) {
+        console.log(`+ [${incoming.category}] — new category (${incoming.words.length} words)`);
+      }
+    } else {
+      // Existing category — merge words
+      const added = [], skipped = [];
+      for (const word of incoming.words) {
+        const key = norm(word);
+        if (existing.seen.has(key)) {
+          skipped.push(finalForm(word));
+        } else {
+          existing.seen.add(key);
+          existing.words.push(word);
+          added.push(finalForm(word));
+        }
+      }
+      addedWords   += added.length;
+      skippedWords += skipped.length;
+      if (added.length > 0 || skipped.length > 0) mergedCats++;
+      if (verbose) {
+        if (added.length === 0 && skipped.length === 0) {
+          console.log(`= [${incoming.category}] — no changes`);
+        } else {
+          console.log(`~ [${incoming.category}] — merged`);
+          if (added.length)   console.log(`    added:   ${added.join(', ')}`);
+          if (skipped.length) console.log(`    skipped: ${skipped.join(', ')} (duplicates)`);
+        }
+      }
+    }
+  }
+
+  fs.writeFileSync(WORDS_TXT, serializeTxt(base.categories), 'utf8');
+
+  const parts = [];
+  if (newCats)      parts.push(`${newCats} new categor${newCats === 1 ? 'y' : 'ies'}`);
+  if (mergedCats)   parts.push(`${mergedCats} merged (+${addedWords} words)`);
+  if (skippedWords) parts.push(`${skippedWords} duplicate${skippedWords === 1 ? '' : 's'} skipped`);
+  if (parts.length === 0) {
+    console.log('✓ Nothing to merge — categories.txt is unchanged.');
+  } else {
+    console.log(`✓ ${parts.join(', ')}`);
+    console.log(`✓ Wrote updated categories.txt`);
+  }
+}
+
 // ─── main ──────────────────────────────────────────────────────────────────
 
-const cmd = process.argv[2];
+const args    = process.argv.slice(2);
+const cmd     = args[0];
+const verbose = args.includes('-v');
+
 if (cmd === 'js2txt') {
   js2txt();
 } else if (cmd === 'txt2js') {
   txt2js();
+} else if (cmd === 'merge') {
+  const inputFile = args.find(a => a !== 'merge' && a !== '-v');
+  if (!inputFile) {
+    console.error('Usage: node tools/convert_lists_tool.js merge <file.txt> [-v]');
+    process.exit(1);
+  }
+  merge(path.resolve(inputFile), verbose);
 } else {
-  console.error('Usage: node tools/convert_lists_tool.js <js2txt|txt2js>');
+  console.error('Usage: node tools/convert_lists_tool.js <txt2js|js2txt|merge <file.txt> [-v]>');
   process.exit(1);
 }
