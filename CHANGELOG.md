@@ -5,6 +5,11 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.17.6] 2026-03-26 — Rename words.txt to categories.txt
+
+- Renamed data/words.txt → data/categories.txt for consistency with categories.js
+- Added auto-generated header to categories.js
+
 ## [0.17.5] 2026-03-26 — Joker modal cancel (X button + click outside)
 
 - Added ✕ button to close joker modal without picking a letter
