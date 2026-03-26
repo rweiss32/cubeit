@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.10.1 -->
+  <!-- VERSION: 0.11.0 -->
   <script src="categories.js"></script>
   <style>
     /* ── THEME TOKENS ── */
@@ -428,7 +428,7 @@
 </div>
 
 <script>
-const VERSION = '0.10.1';
+const VERSION = '0.11.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 // ══════════════════════════════════════════════
 //  CONSTANTS
@@ -550,9 +550,19 @@ function nextRound() {
     return;
   }
 
-  // Draw tiles
+  // Draw tiles — player hand: max 2 of any letter (including jokers)
   const pool = shuffle([...LETTER_POOL]);
-  state.playerTiles = pool.splice(0, 8);
+  const playerTiles = [];
+  const counts = {};
+  for (let i = 0; i < pool.length && playerTiles.length < 8; i++) {
+    const tile = pool[i];
+    if ((counts[tile] || 0) < 2) {
+      counts[tile] = (counts[tile] || 0) + 1;
+      playerTiles.push(tile);
+      pool.splice(i--, 1);
+    }
+  }
+  state.playerTiles = playerTiles;
   state.cpuTiles    = pool.splice(0, 8);
   state.selectedIndices = [];
 

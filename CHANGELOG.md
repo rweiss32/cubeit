@@ -6,6 +6,12 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.11.0] 2026-03-26 — Max 2 of any letter in player's hand
+
+- When dealing 8 tiles, player cannot receive more than 2 of the same letter
+- Jokers (★) also capped at 2 per hand
+- CPU draw is unchanged
+
 ## [0.10.1] 2026-03-25 — Fix Wiktionary lookup for words with final letters
 
 - norm() was stripping final forms before API call (מתן looked up as מתנ)
