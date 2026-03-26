@@ -6,6 +6,11 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.10.1] 2026-03-25 — Fix Wiktionary lookup for words with final letters
+
+- norm() was stripping final forms before API call (מתן looked up as מתנ)
+- Wiktionary now receives the correctly spelled word with final letter forms
+
 ## [0.10.0] 2026-03-25 — Correct final Hebrew letter forms
 
 - Submitted word automatically gets final letter form (מ→ם, נ→ן, פ→ף, כ→ך, צ→ץ)
