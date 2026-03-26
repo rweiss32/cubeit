@@ -6,6 +6,18 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.14.0] 2026-03-26 — Human-like CPU opponent
+
+- CPU gets a random Hebrew name (דני, מיכל, שירה, ...) — same name for all 5 rounds, changes per game
+- Female names (מיכל, רונית, שירה, נועה, תמר) use correct gendered forms: "חושבת", "ניצחה"
+- Animated thinking dots (3 bouncing dots) shown while CPU decides its word
+- CPU "thinks" before revealing its word — delay scales with word length (1.5–4s)
+- CPU word is revealed letter by letter (typewriter effect)
+- CPU occasionally picks a suboptimal word (25% chance) — not always the longest
+- Flavor reaction shown after each round ("כל הכבוד! 👏", "קל מדי 😏", etc.)
+- CPU label changed to "המילה של X" format
+- CPU name replaces "מחשב" everywhere: score bar, banners, game-over screen
+
 ## [0.13.0] 2026-03-26 — Fix warning message shown on result screen
 
 - Category/Wiktionary warnings now displayed on the result screen (not the game screen where they were immediately hidden)

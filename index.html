@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.13.0 -->
+  <!-- VERSION: 0.14.0 -->
   <script src="categories.js"></script>
   <style>
     /* ── THEME TOKENS ── */
@@ -146,6 +146,10 @@
     .timer { font-size: 2.4rem; font-weight: 700; color: #4ecca3; font-variant-numeric: tabular-nums; }
     .timer.urgent { color: #ff6b6b; animation: pulse .5s infinite alternate; }
     @keyframes pulse { from { opacity: 1; } to { opacity: .4; } }
+    .thinking-dots span { animation: dotblink 1.2s infinite both; font-size: 1.6rem; line-height: 1; color: var(--text-muted); }
+    .thinking-dots span:nth-child(2) { animation-delay: .3s; }
+    .thinking-dots span:nth-child(3) { animation-delay: .6s; }
+    @keyframes dotblink { 0%,80%,100% { opacity: .15; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
     .timer-bar-bg { width: 300px; height: 6px; background: var(--timer-bar-track); border-radius: 3px; margin: 6px auto 0; }
     .timer-bar { height: 6px; border-radius: 3px; background: #4ecca3;
                  transition: width 1s linear, background 1s; width: 100%; }
@@ -342,7 +346,7 @@
       <div class="round-label">סיבוב</div>
       <div style="font-weight:700" id="g-round">1 / 5</div>
     </div>
-    <div>🤖 <span class="score-num" id="g-cpu-score">0</span></div>
+    <div>🧑 <span class="cpu-name-label" style="font-size:.8rem;color:var(--text-muted)"></span> <span class="score-num" id="g-cpu-score">0</span></div>
   </div>
 
   <div class="def-card">
@@ -387,17 +391,19 @@
       <div class="side-tiles" id="r-player-tiles"></div>
     </div>
     <div class="side-card">
-      <div class="side-label">🤖 מילת המחשב</div>
+      <div class="side-label">🧑 המילה של <span class="cpu-name-label">—</span></div>
       <div class="side-word" id="r-cpu-word">—</div>
       <div class="side-count" id="r-cpu-count"></div>
       <div class="side-tiles" id="r-cpu-tiles"></div>
     </div>
   </div>
 
+  <div id="r-cpu-reaction" style="min-height:1.4em;font-size:1rem;color:var(--text-muted);margin:6px 0 2px;"></div>
+
   <div class="score-bar">
     <div>🧑 <span class="score-num" id="r-player-score">0</span></div>
     <div style="color:#888;font-size:.85rem">ניקוד</div>
-    <div>🤖 <span class="score-num" id="r-cpu-score">0</span></div>
+    <div>🧑 <span class="cpu-name-label" style="font-size:.85rem;color:#888"></span> <span class="score-num" id="r-cpu-score">0</span></div>
   </div>
 
   <div id="r-warning" style="margin:10px auto;max-width:360px;padding:8px 14px;border-radius:8px;background:var(--bg-card);color:#b8860b;font-size:0.9rem;display:none;"></div>
@@ -430,7 +436,7 @@
 </div>
 
 <script>
-const VERSION = '0.13.0';
+const VERSION = '0.14.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 function syncBodyPadding() {
@@ -477,6 +483,15 @@ const MAX_ROUNDS = 5;
 
 let state = {};
 
+const CPU_NAMES = ['דני','יוסי','מיכל','רונית','אלון','שירה','גיל','נועה','עמית','תמר','אבי','לירן'];
+const CPU_FEMALE = new Set(['מיכל','רונית','שירה','נועה','תמר']);
+function isCpuFemale() { return CPU_FEMALE.has(state.cpuName); }
+
+function pickCpuName(current) {
+  const others = CPU_NAMES.filter(n => n !== current);
+  return others[Math.floor(Math.random() * others.length)];
+}
+
 function initState() {
   state = {
     playerScore: 0,
@@ -490,6 +505,7 @@ function initState() {
     timerSecs: 120,
     timerHandle: null,
     usedCatIndices: [],
+    cpuName: pickCpuName(null),
   };
 }
 
@@ -534,9 +550,14 @@ function canSpell(word, tiles) {
 
 function cpuBestWord(tiles, catKey) {
   const words = shuffle(CATEGORIES[catKey]?.words || []);
-  return words
-    .filter(w => canSpell(w, tiles))
-    .sort((a, b) => b.length - a.length)[0] || '';
+  const candidates = words.filter(w => canSpell(w, tiles)).sort((a, b) => b.length - a.length);
+  if (candidates.length === 0) return '';
+  // 25% chance: pick a random word from the top half instead of the best
+  if (candidates.length > 1 && Math.random() < 0.25) {
+    const topHalf = candidates.slice(0, Math.ceil(candidates.length / 2));
+    return topHalf[Math.floor(Math.random() * topHalf.length)];
+  }
+  return candidates[0];
 }
 
 // ══════════════════════════════════════════════
@@ -581,6 +602,8 @@ function nextRound() {
   const pick = available[Math.floor(Math.random() * available.length)];
   state.usedCatIndices.push(pick);
   state.currentCatKey = CARD_KEYS[pick];
+
+  updateCpuNameLabels();
 
   // Update UI
   document.getElementById('g-def-text').textContent  = state.currentCatKey;
@@ -821,42 +844,110 @@ async function submitWord() {
 }
 
 // ══════════════════════════════════════════════
+//  CPU NAME LABELS
+// ══════════════════════════════════════════════
+
+function updateCpuNameLabels() {
+  const name = state.cpuName;
+  document.querySelectorAll('.cpu-name-label').forEach(el => el.textContent = name);
+}
+
+// ══════════════════════════════════════════════
 //  ROUND END
 // ══════════════════════════════════════════════
 
-function endRound(playerWord, warning) {
+const CPU_REACTIONS = {
+  win:  ['קל מדי 😏', 'הבא! 😎', 'אני מנצח תמיד 😄', 'פשוט 🙂', 'עוד סיבוב? 😏'],
+  lose: ['כל הכבוד! 👏', 'הפתעת אותי 😲', 'הפעם שלך... 😤', 'ממש טוב! 👍', 'אוקי, הנקודה שלך 😅'],
+  tie:  ['שקול... 🤔', 'אותו דבר! 😐', 'אפשר להגיד תיקו 🤷', 'מעניין 🧐'],
+  none: ['לאף אחד לא היה מה להגיד 🤐'],
+};
+
+function randomReaction(outcome) {
+  const pool = CPU_REACTIONS[outcome];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function typewriterReveal(el, word, delay, callback) {
+  el.textContent = '';
+  const letters = [...word];
+  let i = 0;
+  function next() {
+    if (i < letters.length) {
+      el.textContent += letters[i++];
+      setTimeout(next, delay);
+    } else if (callback) {
+      callback();
+    }
+  }
+  setTimeout(next, 0);
+}
+
+async function endRound(playerWord, warning) {
   const pw = norm(playerWord || '');
   const cw = cpuBestWord(state.cpuTiles, state.currentCatKey);
 
   const pLen = pw.length;
   const cLen = cw.length;
 
-  let bannerText, bannerClass;
-  if (pLen > cLen)      { state.playerScore++; bannerText = '🏆 ניצחת!';          bannerClass = 'result-banner banner-win'; }
-  else if (cLen > pLen) { state.cpuScore++;    bannerText = '😞 המחשב ניצח';      bannerClass = 'result-banner banner-lose'; }
-  else if (pLen === 0)  {                       bannerText = '😶 אף אחד לא שיחק'; bannerClass = 'result-banner banner-tie'; }
-  else                  {                       bannerText = '🤝 תיקו!';           bannerClass = 'result-banner banner-tie'; }
+  // Determine outcome (but don't update score yet — wait for reveal)
+  let outcome;
+  if (pLen > cLen)     outcome = 'win';
+  else if (cLen > pLen) outcome = 'lose';
+  else if (pLen === 0)  outcome = 'none';
+  else                  outcome = 'tie';
 
-  document.getElementById('r-banner').textContent  = bannerText;
-  document.getElementById('r-banner').className    = bannerClass;
-  document.getElementById('r-player-word').textContent = finalForm(pw) || '—';
-  document.getElementById('r-cpu-word').textContent    = finalForm(cw) || '—';
+  // Update scores
+  if (outcome === 'win')  state.playerScore++;
+  if (outcome === 'lose') state.cpuScore++;
+
+  // Show result screen immediately with player word and a "thinking" placeholder
+  const bannerTexts = { win: '🏆 ניצחת!', lose: `😞 ${state.cpuName} ${isCpuFemale() ? 'ניצחה' : 'ניצח'}`, tie: '🤝 תיקו!', none: '😶 אף אחד לא שיחק' };
+  const bannerClasses = { win: 'result-banner banner-win', lose: 'result-banner banner-lose', tie: 'result-banner banner-tie', none: 'result-banner banner-tie' };
+
+  document.getElementById('r-banner').textContent = bannerTexts[outcome];
+  document.getElementById('r-banner').className   = bannerClasses[outcome];
+  document.getElementById('r-player-word').textContent  = finalForm(pw) || '—';
   document.getElementById('r-player-count').textContent = pw ? `${pLen} אותיות` : '';
-  document.getElementById('r-cpu-count').textContent    = cw ? `${cLen} אותיות` : '';
   document.getElementById('r-player-score').textContent = state.playerScore;
   document.getElementById('r-cpu-score').textContent    = state.cpuScore;
 
-  renderResultTiles('r-player-tiles', state.playerTiles, pw, 'rt-player');
-  renderResultTiles('r-cpu-tiles',    state.cpuTiles,    cw, 'rt-cpu');
+  // CPU word starts hidden — show animated thinking dots
+  const cpuWordEl  = document.getElementById('r-cpu-word');
+  const cpuCountEl = document.getElementById('r-cpu-count');
+  const cpuReactionEl = document.getElementById('r-cpu-reaction');
+  cpuWordEl.innerHTML = `<span class="thinking-dots"><span>•</span><span>•</span><span>•</span></span>`;
+  cpuCountEl.textContent = `${state.cpuName} ${isCpuFemale() ? 'חושבת' : 'חושב'}`;
+  cpuReactionEl.textContent = '';
 
-  const isLast = state.round >= MAX_ROUNDS;
-  document.getElementById('r-next-btn').textContent = isLast ? 'סיום המשחק ★' : 'סיבוב הבא ▶';
+  renderResultTiles('r-player-tiles', state.playerTiles, pw, 'rt-player');
+  document.getElementById('r-cpu-tiles').innerHTML = '';
 
   const warnEl = document.getElementById('r-warning');
   if (warning) { warnEl.textContent = '⚠️ ' + warning; warnEl.style.display = 'block'; }
   else { warnEl.textContent = ''; warnEl.style.display = 'none'; }
 
+  const isLast = state.round >= MAX_ROUNDS;
+  document.getElementById('r-next-btn').textContent = isLast ? 'סיום המשחק ★' : 'סיבוב הבא ▶';
+  document.getElementById('r-next-btn').disabled = true;
+
   showScreen('screen-result');
+
+  // Thinking delay: 1.5–4s, longer for longer words
+  const thinkMs = 1500 + Math.min(cw.length, 7) * 250 + Math.random() * 1000;
+  await new Promise(r => setTimeout(r, thinkMs));
+
+  // Animate thinking dots while "waiting"
+  cpuCountEl.textContent = '';
+
+  // Typewriter reveal of CPU word
+  const displayWord = finalForm(cw) || '—';
+  typewriterReveal(cpuWordEl, displayWord, 120, () => {
+    cpuCountEl.textContent = cw ? `${cLen} אותיות` : '';
+    renderResultTiles('r-cpu-tiles', state.cpuTiles, cw, 'rt-cpu');
+    cpuReactionEl.textContent = randomReaction(outcome);
+    document.getElementById('r-next-btn').disabled = false;
+  });
 }
 
 function renderResultTiles(containerId, tiles, word, tileClass) {
@@ -889,13 +980,13 @@ function renderResultTiles(containerId, tiles, word, tileClass) {
 function showGameOver() {
   const p = state.playerScore, c = state.cpuScore;
   let title;
-  if (p > c)      { title = '🏆 ניצחת!';        soundWin(); }
-  else if (c > p) { title = '🤖 המחשב ניצח';   soundLose(); }
-  else            { title = '🤝 תיקו!';          soundStart(); }
+  if (p > c)      { title = '🏆 ניצחת!';                    soundWin(); }
+  else if (c > p) { title = `😞 ${state.cpuName} ${isCpuFemale() ? 'ניצחה' : 'ניצח'}`;   soundLose(); }
+  else            { title = '🤝 תיקו!';                    soundStart(); }
 
   document.getElementById('go-title').textContent = title;
   document.getElementById('go-score').innerHTML =
-    `ניקוד סופי: <span>אתה ${p}</span> — <span>מחשב ${c}</span>`;
+    `ניקוד סופי: <span>אתה ${p}</span> — <span>${state.cpuName} ${c}</span>`;
   showScreen('screen-gameover');
 }
 
