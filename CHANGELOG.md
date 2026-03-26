@@ -5,6 +5,8 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.14.1] 2026-03-26 - Expand word lists
+- Added more words to the category lists
 
 ## [0.14.0] 2026-03-26 — Human-like CPU opponent
 
