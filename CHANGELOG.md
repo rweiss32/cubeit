@@ -5,6 +5,12 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.17.3] 2026-03-26 — Wikipedia popup after successful word
+
+- After each round, if the player submitted a word, fetch its Hebrew Wikipedia summary
+- Display it in a dismissible popup after the CPU reveal animation
+- If no Wikipedia entry exists, nothing is shown
+
 ## [0.17.2] 2026-03-26 — Reorganize project files
 
 - Moved logo files to assets/

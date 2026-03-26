@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.17.2 -->
+  <!-- VERSION: 0.17.3 -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#2a2a50" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -204,6 +204,21 @@
     .btn-clear:hover { background: var(--btn-clear-hover); color: var(--btn-clear-hover-color); }
 
     /* ── JOKER MODAL ── */
+    #wiki-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 400;
+      background: var(--overlay);
+      align-items: center; justify-content: center;
+    }
+    #wiki-modal.open { display: flex; }
+    .wiki-box {
+      background: var(--bg-card); border-radius: 18px;
+      padding: 24px 20px 18px; max-width: 360px; width: 90%;
+      text-align: center;
+    }
+    .wiki-word { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+    .wiki-source { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; }
+    .wiki-extract { font-size: 0.92rem; color: var(--text); line-height: 1.6; margin-bottom: 18px; text-align: right; }
     #joker-modal {
       display: none;
       position: fixed; inset: 0; z-index: 500;
@@ -440,8 +455,18 @@
   </div>
 </div>
 
+<!-- ══════════════ WIKI POPUP ══════════════ -->
+<div id="wiki-modal">
+  <div class="wiki-box">
+    <div class="wiki-word" id="wiki-word"></div>
+    <div class="wiki-source">ויקיפדיה</div>
+    <div class="wiki-extract" id="wiki-extract"></div>
+    <button class="btn btn-gold" onclick="closeWikiModal()">סגור</button>
+  </div>
+</div>
+
 <script>
-const VERSION = '0.17.2';
+const VERSION = '0.17.3';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 function syncBodyPadding() {
@@ -899,6 +924,7 @@ function getSuggestions(tiles, catKey) {
 
 async function endRound(playerWord, warning) {
   const pw = norm(playerWord || '');
+  const wikiPromise = pw ? fetchWikiSummary(finalForm(pw)) : Promise.resolve(null);
   const cw = cpuBestWord(state.cpuTiles, state.currentCatKey);
 
   const pLen = pw.length;
@@ -977,6 +1003,7 @@ async function endRound(playerWord, warning) {
     bannerEl.className   = bannerClasses[outcome];
     cpuReactionEl.textContent = randomReaction(outcome);
     document.getElementById('r-next-btn').disabled = false;
+    if (pw) wikiPromise.then(extract => { if (extract) showWikiModal(finalForm(pw), extract); });
   });
 }
 
@@ -1083,6 +1110,32 @@ function soundLose() {
   const t = audioCtx().currentTime;
   // descending "wah-wah"
   [440, 370, 311, 261].forEach((f, i) => _tone(f, t + i * 0.15, 0.28, 'sawtooth', 0.18));
+}
+
+// ══════════════════════════════════════════════
+//  WIKIPEDIA POPUP
+// ══════════════════════════════════════════════
+
+async function fetchWikiSummary(word) {
+  try {
+    const url = `https://he.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(word)}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.extract || null;
+  } catch {
+    return null;
+  }
+}
+
+function showWikiModal(word, extract) {
+  document.getElementById('wiki-word').textContent = word;
+  document.getElementById('wiki-extract').textContent = extract;
+  document.getElementById('wiki-modal').classList.add('open');
+}
+
+function closeWikiModal() {
+  document.getElementById('wiki-modal').classList.remove('open');
 }
 
 // ── INIT ──────────────────────────────────────
