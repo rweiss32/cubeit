@@ -5,6 +5,12 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.17.5] 2026-03-26 — Joker modal cancel (X button + click outside)
+
+- Added ✕ button to close joker modal without picking a letter
+- Clicking outside the joker box also cancels it
+- Cancelling silently aborts the word submission
+
 ## [0.17.4] 2026-03-26 — Wikipedia bottom sheet after successful word
 
 - Show Hebrew Wikipedia summary as a slide-up bottom sheet on the result screen

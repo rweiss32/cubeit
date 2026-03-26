@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.17.4 -->
+  <!-- VERSION: 0.17.5 -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#2a2a50" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -231,6 +231,14 @@
       padding: 28px 24px; max-width: 420px; width: 90%;
       text-align: center; border: 2px solid #8048d0;
     }
+    #joker-close-btn {
+      position: absolute; top: 10px; left: 14px;
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; color: var(--text-muted); line-height: 1;
+      padding: 4px 6px; border-radius: 6px;
+    }
+    #joker-close-btn:hover { color: var(--text); }
+    .joker-box { position: relative; }
     .joker-box h3 { font-size: 1.2rem; color: #f7971e; margin-bottom: 4px; }
     .joker-box p  { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 18px; }
     .joker-word-preview {
@@ -448,6 +456,7 @@
 <!-- ══════════════ JOKER MODAL ══════════════ -->
 <div id="joker-modal">
   <div class="joker-box">
+    <button id="joker-close-btn" onclick="cancelJoker()" aria-label="סגור">✕</button>
     <h3>הג'וקר מייצג איזו אות?</h3>
     <p id="joker-modal-subtitle"></p>
     <div class="joker-word-preview" id="joker-word-preview"></div>
@@ -465,7 +474,7 @@
 </div>
 
 <script>
-const VERSION = '0.17.4';
+const VERSION = '0.17.5';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 function syncBodyPadding() {
@@ -759,9 +768,17 @@ async function isHebrewWord(word) {
 
 const HE_LETTERS = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת'];
 
-// Returns a Promise that resolves with the letter the player picks
+// Returns a Promise that resolves with the chosen letter, or null if cancelled
+let _jokerResolve = null;
+
+function cancelJoker() {
+  if (_jokerResolve) { _jokerResolve(null); _jokerResolve = null; }
+  document.getElementById('joker-modal').classList.remove('open');
+}
+
 function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
   return new Promise(resolve => {
+    _jokerResolve = resolve;
     const modal = document.getElementById('joker-modal');
 
     // Subtitle
@@ -791,6 +808,7 @@ function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
       btn.className = 'letter-pick-btn';
       btn.textContent = letter;
       btn.onclick = () => {
+        _jokerResolve = null;
         modal.classList.remove('open');
         resolve(letter);
       };
@@ -798,6 +816,16 @@ function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
     });
 
     modal.classList.add('open');
+
+    // Click outside to cancel
+    setTimeout(() => {
+      modal.addEventListener('click', function onOutside(e) {
+        if (!e.target.closest('.joker-box')) {
+          modal.removeEventListener('click', onOutside);
+          cancelJoker();
+        }
+      });
+    }, 0);
   });
 }
 
@@ -808,6 +836,7 @@ async function resolveJokers(tiles) {
   let jokerNum = 1;
   for (const pos of jokerPositions) {
     const chosen = await askJokerLetter(result, pos, jokerPositions.length, jokerNum++);
+    if (chosen === null) return null;
     result[pos] = chosen;
   }
   return result;
@@ -832,6 +861,7 @@ async function submitWord() {
   // Resolve jokers first (if any)
   const hasJokers = rawTiles.includes('★');
   const resolvedTiles = hasJokers ? await resolveJokers(rawTiles) : rawTiles;
+  if (resolvedTiles === null) return; // cancelled
   const word = finalForm(resolvedTiles.join(''));
 
   document.getElementById('g-error').textContent = '';
