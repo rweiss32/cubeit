@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.17.6 -->
+  <!-- VERSION: 0.18.0 -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#2a2a50" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -102,6 +102,47 @@
     #header-logo-img { width: min(60%, 544px); height: auto; display: block; }
 
     .header-subtitle { font-size: 0.9rem; color: var(--text-dim); letter-spacing: 1px; text-align: center; margin-top: 4px; }
+    #btn-settings {
+      position: absolute; bottom: 6px; right: 14px;
+      background: none; border: none; cursor: pointer;
+      font-size: 1.3rem; color: var(--text-dim); padding: 4px;
+      line-height: 1;
+    }
+    #btn-settings:hover { color: var(--text); }
+
+    /* ── SETTINGS SHEET ── */
+    #settings-sheet {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 300;
+      background: var(--bg-card);
+      border-radius: 16px 16px 0 0;
+      padding: 20px 24px 32px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    #settings-sheet.open { transform: translateY(0); }
+    .settings-title { font-size: 1rem; font-weight: 700; margin-bottom: 18px; text-align: right; }
+    .settings-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--border-header);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { font-size: 0.95rem; color: var(--text); }
+    .toggle { position: relative; width: 46px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 26px;
+      background: #ccc; cursor: pointer; transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 20px; height: 20px; border-radius: 50%;
+      left: 3px; bottom: 3px; background: #fff;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: #4ecca3; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
     .header-version {
       position: absolute; bottom: 8px; left: 14px;
       font-size: 0.98rem; color: var(--text-dim); font-family: monospace;
@@ -342,6 +383,7 @@
     <div class="header-subtitle">משחק מילים</div>
   </div>
   <div class="header-version" id="header-version"></div>
+  <button id="btn-settings" onclick="openSettings()" aria-label="הגדרות">⚙️</button>
 </header>
 
 <!-- ══════════════ START ══════════════ -->
@@ -464,6 +506,25 @@
   </div>
 </div>
 
+<!-- ══════════════ SETTINGS SHEET ══════════════ -->
+<div id="settings-sheet">
+  <div class="settings-title">⚙️ הגדרות</div>
+  <div class="settings-row">
+    <label class="toggle">
+      <input type="checkbox" id="setting-sound" onchange="saveSetting('sound', this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="settings-label">צלילים</span>
+  </div>
+  <div class="settings-row">
+    <label class="toggle">
+      <input type="checkbox" id="setting-wiki" onchange="saveSetting('wiki', this.checked)">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="settings-label">חלון ויקיפדיה</span>
+  </div>
+</div>
+
 <!-- ══════════════ WIKI BOTTOM SHEET ══════════════ -->
 <div id="wiki-sheet">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
@@ -474,8 +535,33 @@
 </div>
 
 <script>
-const VERSION = '0.17.6';
+const VERSION = '0.18.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
+
+// ══════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════
+
+const settings = {
+  sound: localStorage.getItem('setting_sound') !== 'false',
+  wiki:  localStorage.getItem('setting_wiki')  !== 'false',
+};
+
+function saveSetting(key, value) {
+  settings[key] = value;
+  localStorage.setItem('setting_' + key, value);
+}
+
+function openSettings() {
+  document.getElementById('setting-sound').checked = settings.sound;
+  document.getElementById('setting-wiki').checked  = settings.wiki;
+  document.getElementById('settings-sheet').classList.add('open');
+  setTimeout(() => document.addEventListener('click', closeSettings, { once: true }), 0);
+}
+
+function closeSettings() {
+  document.getElementById('settings-sheet').classList.remove('open');
+}
 
 function syncBodyPadding() {
   const h = document.getElementById('site-header').getBoundingClientRect().height;
@@ -1112,11 +1198,13 @@ function _tone(freq, start, dur, type = 'sine', vol = 0.28, endFreq = null) {
 }
 
 function soundClick() {
+  if (!settings.sound) return;
   const t = audioCtx().currentTime;
   _tone(900, t, 0.06, 'sine', 0.08, 600);
 }
 
 function soundSubmit() {
+  if (!settings.sound) return;
   const t = audioCtx().currentTime;
   // quick two-note confirmation: G5 → C6
   _tone(784, t,        0.12, 'sine', 0.25);
@@ -1124,12 +1212,14 @@ function soundSubmit() {
 }
 
 function soundStart() {
+  if (!settings.sound) return;
   const t = audioCtx().currentTime;
   // cheerful ascending arpeggio: C5 E5 G5 C6
   [523, 659, 784, 1047].forEach((f, i) => _tone(f, t + i * 0.1, 0.18, 'sine', 0.28));
 }
 
 function soundWin() {
+  if (!settings.sound) return;
   const t = audioCtx().currentTime;
   // rising fanfare + final high note
   [523, 659, 784, 1047, 1319].forEach((f, i) => _tone(f, t + i * 0.11, 0.22, 'sine', 0.32));
@@ -1137,6 +1227,7 @@ function soundWin() {
 }
 
 function soundLose() {
+  if (!settings.sound) return;
   const t = audioCtx().currentTime;
   // descending "wah-wah"
   [440, 370, 311, 261].forEach((f, i) => _tone(f, t + i * 0.15, 0.28, 'sawtooth', 0.18));
@@ -1159,6 +1250,7 @@ async function fetchWikiSummary(word) {
 }
 
 function showWikiSheet(word, extract) {
+  if (!settings.wiki) return;
   document.getElementById('wiki-sheet-word').textContent = word;
   document.getElementById('wiki-sheet-extract').textContent = extract;
   document.getElementById('wiki-sheet').classList.add('open');

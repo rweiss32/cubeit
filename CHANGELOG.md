@@ -5,6 +5,13 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.18.0] 2026-03-26 — Settings panel
+
+- Gear icon in header opens a settings bottom sheet
+- Toggle to enable/disable sounds
+- Toggle to enable/disable Wikipedia popup
+- Settings persisted in localStorage
+
 ## [0.17.6] 2026-03-26 — Rename words.txt to categories.txt
 
 - Renamed data/words.txt → data/categories.txt for consistency with categories.js
