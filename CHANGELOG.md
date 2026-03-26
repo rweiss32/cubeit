@@ -6,6 +6,12 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.12.1] 2026-03-26 — Fix header overlapping content + category validation
+
+- Body padding-top now measured dynamically from actual header height (fixes overlap on all screen sizes)
+- Submitted word checked against category word list first (no API call needed)
+- If not in list, falls back to Wiktionary; if valid Hebrew but not in list, shows warning to user
+
 ## [0.12.0] 2026-03-26 — Expanded word lists
 
 - ~50-89 words per category (filtered to max 8 letters, no phrases)

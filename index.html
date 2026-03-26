@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.12.0 -->
+  <!-- VERSION: 0.12.1 -->
   <script src="categories.js"></script>
   <style>
     /* ── THEME TOKENS ── */
@@ -83,7 +83,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding-top: 120px; /* header height */
+      padding-top: 120px; /* fallback; JS adjusts dynamically */
     }
 
     /* ── SITE HEADER ── */
@@ -428,8 +428,15 @@
 </div>
 
 <script>
-const VERSION = '0.12.0';
+const VERSION = '0.12.1';
 document.getElementById('header-version').textContent = 'v' + VERSION;
+
+function syncBodyPadding() {
+  const h = document.getElementById('site-header').getBoundingClientRect().height;
+  document.body.style.paddingTop = h + 'px';
+}
+window.addEventListener('load', syncBodyPadding);
+window.addEventListener('resize', syncBodyPadding);
 // ══════════════════════════════════════════════
 //  CONSTANTS
 // ══════════════════════════════════════════════
@@ -773,9 +780,21 @@ async function submitWord() {
   const resolvedTiles = hasJokers ? await resolveJokers(rawTiles) : rawTiles;
   const word = finalForm(resolvedTiles.join(''));
 
-  // Lock UI and validate
-  setSubmitLocked(true);
   document.getElementById('g-error').textContent = '';
+
+  // Check category word list first (fast, no API)
+  const catWords = CATEGORIES[state.currentCatKey]?.words || [];
+  const inCategoryList = catWords.some(w => norm(w) === norm(word));
+
+  if (inCategoryList) {
+    soundSubmit();
+    clearInterval(state.timerHandle);
+    endRound(word);
+    return;
+  }
+
+  // Not in list — fall back to Wiktionary
+  setSubmitLocked(true);
   document.getElementById('g-checking').textContent = '🔍 בודק במילון...';
 
   const result = await isHebrewWord(word);
@@ -789,6 +808,8 @@ async function submitWord() {
   }
   if (result === null) {
     document.getElementById('g-error').textContent = '⚠️ לא ניתן לאמת — המילה התקבלה';
+  } else {
+    document.getElementById('g-error').textContent = 'המילה לא מופיעה ברשימה שלנו — וודא שהיא אכן מתאימה להגדרה';
   }
 
   soundSubmit();
