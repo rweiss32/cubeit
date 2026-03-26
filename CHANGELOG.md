@@ -6,6 +6,11 @@ Format: `[version] YYYY-MM-DD — description`
 
 ---
 
+## [0.12.0] 2026-03-26 — Expanded word lists
+
+- ~50-89 words per category (filtered to max 8 letters, no phrases)
+- Compact format: 8 words per line in categories.js
+
 ## [0.11.0] 2026-03-26 — Max 2 of any letter in player's hand
 
 - When dealing 8 tiles, player cannot receive more than 2 of the same letter
