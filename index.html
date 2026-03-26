@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>קוביאות</title>
-  <!-- VERSION: 0.14.1 -->
+  <!-- VERSION: 0.15.0 -->
   <script src="categories.js"></script>
   <style>
     /* ── THEME TOKENS ── */
@@ -406,6 +406,8 @@
     <div>🧑 <span class="cpu-name-label" style="font-size:.85rem;color:#888"></span> <span class="score-num" id="r-cpu-score">0</span></div>
   </div>
 
+  <div id="r-suggestions" style="margin:10px auto;max-width:360px;padding:8px 14px;border-radius:8px;background:var(--bg-card);font-size:0.9rem;display:none;"></div>
+
   <div id="r-warning" style="margin:10px auto;max-width:360px;padding:8px 14px;border-radius:8px;background:var(--bg-card);color:#b8860b;font-size:0.9rem;display:none;"></div>
 
   <button class="btn btn-gold" id="r-next-btn" onclick="soundClick();nextRound()">סיבוב הבא ▶</button>
@@ -436,7 +438,7 @@
 </div>
 
 <script>
-const VERSION = '0.14.1';
+const VERSION = '0.15.0';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 function syncBodyPadding() {
@@ -624,7 +626,7 @@ function nextRound() {
 // ══════════════════════════════════════════════
 
 function startTimer() {
-  state.timerSecs = 120;
+  state.timerSecs = 5;//120;
   updateTimerUI();
   state.timerHandle = setInterval(() => {
     state.timerSecs--;
@@ -883,6 +885,15 @@ function typewriterReveal(el, word, delay, callback) {
   setTimeout(next, 0);
 }
 
+function getSuggestions(tiles, catKey) {
+  const words = (CATEGORIES[catKey]?.words || []).filter(w => canSpell(w, tiles));
+  if (words.length === 0) return [];
+  words.sort((a, b) => a.length - b.length);
+  const short = words[0];
+  const longer = words.filter(w => w.length > short.length).sort((a, b) => b.length - a.length)[0] || null;
+  return longer ? [short, longer] : [short];
+}
+
 async function endRound(playerWord, warning) {
   const pw = norm(playerWord || '');
   const cw = cpuBestWord(state.cpuTiles, state.currentCatKey);
@@ -923,6 +934,19 @@ async function endRound(playerWord, warning) {
 
   renderResultTiles('r-player-tiles', state.playerTiles, pw, 'rt-player');
   document.getElementById('r-cpu-tiles').innerHTML = '';
+
+  const suggestEl = document.getElementById('r-suggestions');
+  if (!pw) {
+    const sugs = getSuggestions(state.playerTiles, state.currentCatKey);
+    if (sugs.length > 0) {
+      suggestEl.innerHTML = '💡 יכולת לשחק: ' + sugs.map(w => `<strong>${finalForm(w)}</strong>`).join(' או ');
+      suggestEl.style.display = 'block';
+    } else {
+      suggestEl.style.display = 'none';
+    }
+  } else {
+    suggestEl.style.display = 'none';
+  }
 
   const warnEl = document.getElementById('r-warning');
   if (warning) { warnEl.textContent = '⚠️ ' + warning; warnEl.style.display = 'block'; }
