@@ -5,6 +5,10 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.17.1] 2026-03-26 — Use official cube-it.co.il icon
+
+- Replaced generated icons with the official icon from cube-it.co.il
+
 ## [0.17.0] 2026-03-26 — PWA manifest + home screen icon
 
 - manifest.json with app name, RTL/Hebrew locale, theme color (#2a2a50)
