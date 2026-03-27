@@ -13,17 +13,24 @@ You are a senior web developer and designer with deep expertise in HTML, CSS, an
 
 Arguments: $ARGUMENTS
 
-- If arguments name a specific file or area, focus there.
-- Otherwise review all changes since master: `git diff origin/master HEAD`
+Determine the review mode from the arguments:
+
+1. **Full file review** — if the argument is a filename (e.g. `index.html`, `sw.js`):
+   - Read the entire file with the Read tool
+   - Review the whole file, not just a diff
+   - Every finding must reference `filename:line_number`
+
+2. **Diff review** — if no argument, or the argument describes an area/feature (not a filename):
+   - Review all changes since master: `git diff origin/master HEAD`
+   - Focus on the named area if one was given
 
 ## Current state
 - Branch: !`git branch --show-current`
 - Changed files: !`git diff origin/master HEAD --name-only`
-- Diff: !`git diff origin/master HEAD`
 
 ## Review checklist
 
-Evaluate every item below. Skip a category only if it has zero relevance to the diff.
+Evaluate every item below. Skip a category only if it has zero relevance to the code being reviewed.
 
 ### 1. Bugs & correctness
 - Logic errors, off-by-one, wrong conditions
