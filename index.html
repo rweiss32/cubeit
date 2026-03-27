@@ -205,6 +205,7 @@
     .tiles-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
     .tiles-row { display: flex; gap: 8px; flex-wrap: wrap; }
     #g-tiles.tiles-dragging .tile { transition: transform 0.15s ease; }
+    #g-word-preview.drop-target { outline: 2px dashed #4ecca3; border-radius: 8px; background: rgba(78,204,163,0.08); }
     .tile {
       width: 58px; height: 58px; background: #f5e6c8; color: #2a1a00;
       border-radius: 8px; border: none; font-size: 1.7rem; font-weight: 700;
@@ -800,6 +801,8 @@ function initTileDrag(btn, i) {
   let offsetX      = 0, offsetY = 0;
   let currentTo    = i;  // live insertion index
   let shiftPx      = 0;
+  let lastX        = 0, lastY = 0;
+  let overWordArea = false;
 
   function getTileShift() {
     const container = document.getElementById('g-tiles');
@@ -827,6 +830,8 @@ function initTileDrag(btn, i) {
     const container = document.getElementById('g-tiles');
     container.classList.remove('tiles-dragging');
     container.querySelectorAll('[data-tile-index]').forEach(el => el.style.transform = '');
+    document.getElementById('g-word-preview').classList.remove('drop-target');
+    overWordArea = false;
   }
 
   function startDrag(clientX, clientY) {
@@ -855,23 +860,46 @@ function initTileDrag(btn, i) {
 
   function moveClone(clientX, clientY) {
     if (!clone) return;
+    lastX = clientX; lastY = clientY;
     clone.style.left = (clientX - offsetX) + 'px';
     clone.style.top  = (clientY - offsetY) + 'px';
 
-    const el = document.elementFromPoint(clientX, clientY);
-    const target = el?.closest('[data-tile-index]');
-    if (target) {
-      const idx = parseInt(target.dataset.tileIndex);
-      if (!isNaN(idx)) applyPreview(idx);
+    const wordPreview = document.getElementById('g-word-preview');
+    const wr = wordPreview.getBoundingClientRect();
+    const hovering = clientX >= wr.left && clientX <= wr.right && clientY >= wr.top && clientY <= wr.bottom;
+
+    if (hovering) {
+      if (!overWordArea) {
+        overWordArea = true;
+        wordPreview.classList.add('drop-target');
+        applyPreview(i); // reset tile shifts — not reordering
+      }
+    } else {
+      if (overWordArea) {
+        overWordArea = false;
+        wordPreview.classList.remove('drop-target');
+      }
+      const el = document.elementFromPoint(clientX, clientY);
+      const target = el?.closest('[data-tile-index]');
+      if (target) {
+        const idx = parseInt(target.dataset.tileIndex);
+        if (!isNaN(idx)) applyPreview(idx);
+      }
     }
   }
 
   function commitDrag() {
     const j = currentTo;
+    const droppedOnWord = overWordArea;
     clone?.remove(); clone = null;
     btn.style.opacity = '';
     dragging = false;
     resetPreview();
+
+    if (droppedOnWord) {
+      if (!state.selectedIndices.includes(i)) selectTile(i);
+      return;
+    }
 
     if (j === i) return;
     const [tile] = state.playerTiles.splice(i, 1);
