@@ -184,6 +184,7 @@
 <header>
   <h1>🎲 קוביאות — עורך מילים</h1>
   <button class="btn btn-primary" onclick="openFile()">📂 פתח קובץ</button>
+  <span id="stats" style="font-size:0.8rem;color:#aaa;"></span>
   <span id="status"></span>
 </header>
 
@@ -205,7 +206,7 @@
       <span class="empty-msg">בחר קטגוריה מהרשימה</span>
     </div>
     <div class="word-input-area" id="word-input-area" style="display:none">
-      <input type="text" id="word-input" placeholder="הקלד מילה חדשה ולחץ Enter..." autocomplete="off" spellcheck="false" />
+      <input type="text" id="word-input" placeholder="הקלד מילה אחת או מספר מילים מופרדות בפסיק (בית,כלב,ספר) ולחץ Enter..." autocomplete="off" spellcheck="false" />
       <div id="word-error"></div>
     </div>
   </div>
@@ -331,6 +332,7 @@ function validateWord(raw, cat) {
 
 // ── Render ────────────────────────────────────────────────────────────────
 function renderCatList() {
+  renderStats();
   const list = document.getElementById('cat-list');
   list.innerHTML = '';
   categories.forEach(cat => {
@@ -378,7 +380,6 @@ function renderWords(highlightLast = false) {
   document.getElementById('words-hint').textContent    = cat?.hint ? `| ${cat.hint}` : '';
   document.getElementById('word-count').textContent    = cat ? `${cat.words.length} מילים` : '';
   document.getElementById('word-input-area').style.display = cat ? '' : 'none';
-  document.getElementById('word-error').textContent   = '';
 
   const list = document.getElementById('word-list');
   list.innerHTML = '';
@@ -577,23 +578,29 @@ document.getElementById('add-cat-input').addEventListener('keydown', async e => 
 
 document.getElementById('word-input').addEventListener('keydown', async e => {
   if (e.key !== 'Enter') return;
-  const raw   = e.target.value.trim();
   const input = document.getElementById('word-input');
   const error = document.getElementById('word-error');
 
-  const msg = validateWord(raw, selectedCat);
-  if (msg) {
-    error.textContent = msg;
-    input.classList.add('error');
-    return;
+  const parts = input.value.split(',').map(w => w.trim()).filter(Boolean);
+  if (!parts.length) return;
+
+  const errors = [];
+  for (const raw of parts) {
+    const msg = validateWord(raw, selectedCat);
+    if (msg) { errors.push(`"${raw}": ${msg}`); continue; }
+    const word = finalForm(norm(raw));
+    selectedCat.seen.add(norm(word));
+    selectedCat.words.push(word);
   }
 
-  const word = finalForm(norm(raw));
-  selectedCat.seen.add(norm(word));
-  selectedCat.words.push(word);
   input.value = '';
-  error.textContent = '';
-  input.classList.remove('error');
+  if (errors.length) {
+    error.textContent = errors.join(' | ');
+    input.classList.add('error');
+  } else {
+    error.textContent = '';
+    input.classList.remove('error');
+  }
 
   await saveFile();
   renderCatList();
@@ -601,10 +608,18 @@ document.getElementById('word-input').addEventListener('keydown', async e => {
   document.getElementById('word-input').focus();
 });
 
-document.getElementById('word-input').addEventListener('input', () => {
-  document.getElementById('word-input').classList.remove('error');
+document.getElementById('word-input').addEventListener('input', e => {
+  if (!e.target.value) return; // don't clear error when field is emptied programmatically
+  e.target.classList.remove('error');
   document.getElementById('word-error').textContent = '';
 });
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+function renderStats() {
+  const totalWords = categories.reduce((s, c) => s + c.words.length, 0);
+  document.getElementById('stats').textContent =
+    `${categories.length} קטגוריות | ${totalWords} מילים`;
+}
 
 // ── Status ────────────────────────────────────────────────────────────────
 let _statusTimer = null;
