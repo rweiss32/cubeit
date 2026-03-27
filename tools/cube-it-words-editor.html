@@ -63,6 +63,21 @@
       font-size: 0.72rem; background: #ccc; color: #555;
       padding: 1px 6px; border-radius: 10px;
     }
+    .cat-item .edit-cat-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1rem; color: #888; padding: 3px 6px;
+      opacity: 0; border-radius: 4px; flex-shrink: 0; line-height: 1;
+    }
+    .cat-item:hover .edit-cat-btn { opacity: 0.7; }
+    .cat-item:hover .edit-cat-btn:hover { opacity: 1; color: #4ecca3; background: rgba(78,204,163,0.12); }
+    .cat-item.active .edit-cat-btn { color: rgba(255,255,255,0.7); opacity: 0; }
+    .cat-item.active:hover .edit-cat-btn { opacity: 1; }
+    .cat-item.active:hover .edit-cat-btn:hover { color: #4ecca3; background: rgba(255,255,255,0.15); }
+    .cat-item .cat-name-input {
+      flex: 1; background: white; border: 1px solid #4ecca3;
+      border-radius: 4px; padding: 2px 6px; font-size: 0.95rem;
+      font-family: inherit; direction: rtl; outline: none; color: #1a1a2e;
+    }
     .cat-item .del-cat-btn {
       background: none; border: none; cursor: pointer;
       font-size: 1.1rem; color: #888; padding: 3px 6px;
@@ -124,6 +139,13 @@
     .word-chip.new {
       background: #4ecca3; color: #0a1a14;
       animation: fadein 0.4s ease;
+    }
+    .word-chip .word-label { cursor: pointer; }
+    .word-chip .word-label:hover { text-decoration: underline; }
+    .word-chip .word-edit-input {
+      background: white; border: 1px solid #4ecca3; border-radius: 10px;
+      padding: 0 6px; font-size: 1rem; font-weight: 600; font-family: inherit;
+      direction: rtl; outline: none; width: 6em; color: #2a1a00;
     }
     .word-chip .remove-btn {
       background: none; border: none; cursor: pointer;
@@ -309,10 +331,20 @@ function renderCatList() {
 
     const nameSpan = document.createElement('span');
     nameSpan.textContent = cat.name;
+    nameSpan.style.flex = '1';
 
     const badge = document.createElement('span');
     badge.className = 'cat-badge';
     badge.textContent = cat.words.length;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-cat-btn';
+    editBtn.title = 'ערוך שם קטגוריה';
+    editBtn.textContent = '✏️';
+    editBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      startEditCatName(div, nameSpan, badge, editBtn, delBtn, cat);
+    });
 
     const delBtn = document.createElement('button');
     delBtn.className = 'del-cat-btn';
@@ -325,6 +357,7 @@ function renderCatList() {
 
     div.appendChild(nameSpan);
     div.appendChild(badge);
+    div.appendChild(editBtn);
     div.appendChild(delBtn);
     div.onclick = () => selectCategory(cat);
     list.appendChild(div);
@@ -350,12 +383,17 @@ function renderWords(highlightLast = false) {
   sorted.forEach(word => {
     const chip = document.createElement('span');
     chip.className = 'word-chip' + (word === lastWord ? ' new' : '');
-    const label = document.createTextNode(word);
-    const btn = document.createElement('button');
-    btn.className = 'remove-btn';
-    btn.title = 'הסר מילה';
-    btn.textContent = '✕';
-    btn.addEventListener('click', async () => {
+    const label = document.createElement('span');
+    label.className = 'word-label';
+    label.textContent = word;
+    label.title = 'לחץ לעריכה';
+    label.addEventListener('click', () => startEditWord(chip, word, cat));
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.title = 'הסר מילה';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', async () => {
       const key = norm(word);
       cat.words = cat.words.filter(w => norm(w) !== key);
       cat.seen.delete(key);
@@ -365,7 +403,7 @@ function renderWords(highlightLast = false) {
       document.getElementById('word-input').focus();
     });
     chip.appendChild(label);
-    chip.appendChild(btn);
+    chip.appendChild(removeBtn);
     list.appendChild(chip);
   });
 }
@@ -406,6 +444,87 @@ async function deleteCategory(cat) {
   }
   await saveFile();
   renderCatList();
+}
+
+// ── Inline edit: word ─────────────────────────────────────────────────────
+function startEditWord(chip, oldWord, cat) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'word-edit-input';
+  input.value = oldWord;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  chip.innerHTML = '';
+  chip.appendChild(input);
+  input.focus();
+  input.select();
+
+  async function commit() {
+    const raw = input.value.trim();
+    if (!raw || raw === oldWord) { renderWords(); return; }
+    const oldKey = norm(oldWord);
+    // validate as if old word doesn't exist
+    cat.seen.delete(oldKey);
+    const msg = validateWord(raw, cat);
+    if (msg) {
+      cat.seen.add(oldKey); // restore
+      input.style.borderColor = '#e94560';
+      input.title = msg;
+      input.select();
+      return;
+    }
+    const newWord = finalForm(norm(raw));
+    const newKey  = norm(newWord);
+    cat.words = cat.words.map(w => norm(w) === oldKey ? newWord : w);
+    cat.seen.add(newKey);
+    await saveFile();
+    renderCatList();
+    renderWords();
+    document.getElementById('word-input').focus();
+  }
+
+  input.addEventListener('keydown', async e => {
+    if (e.key === 'Enter')  { e.preventDefault(); await commit(); }
+    if (e.key === 'Escape') { renderWords(); }
+  });
+  input.addEventListener('blur', () => renderWords());
+}
+
+// ── Inline edit: category name ────────────────────────────────────────────
+function startEditCatName(div, nameSpan, badge, editBtn, delBtn, cat) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'cat-name-input';
+  input.value = cat.name;
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  div.replaceChild(input, nameSpan);
+  editBtn.style.opacity = '0';
+  div.onclick = null;
+  input.focus();
+  input.select();
+
+  async function commit() {
+    const newName = input.value.trim();
+    if (newName && newName !== cat.name) {
+      if (categories.find(c => c !== cat && c.name === newName)) {
+        input.style.borderColor = '#e94560';
+        input.title = 'שם קטגוריה כבר קיים';
+        input.select();
+        return;
+      }
+      cat.name = newName;
+      if (selectedCat === cat) document.getElementById('words-title').textContent = newName;
+      await saveFile();
+    }
+    renderCatList();
+  }
+
+  input.addEventListener('keydown', async e => {
+    if (e.key === 'Enter')  { e.preventDefault(); await commit(); }
+    if (e.key === 'Escape') { renderCatList(); }
+  });
+  input.addEventListener('blur', () => renderCatList());
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────
