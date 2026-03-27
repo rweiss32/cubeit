@@ -1,5 +1,5 @@
 ---
-name: review
+name: branch-review
 description: Review the current branch against master — checks version bump, changelog, categories sync, and summarizes changes
 allowed-tools: Read, Grep, Bash
 ---
