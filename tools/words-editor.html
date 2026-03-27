@@ -63,6 +63,36 @@
       font-size: 0.72rem; background: #ccc; color: #555;
       padding: 1px 6px; border-radius: 10px;
     }
+    .cat-item .del-cat-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; color: #888; padding: 3px 6px;
+      opacity: 0; border-radius: 4px; flex-shrink: 0; line-height: 1;
+    }
+    .cat-item:hover .del-cat-btn { opacity: 0.7; }
+    .cat-item:hover .del-cat-btn:hover { opacity: 1; color: #e94560; background: rgba(233,69,96,0.12); }
+    .cat-item.active .del-cat-btn { color: rgba(255,255,255,0.7); opacity: 0; }
+    .cat-item.active:hover .del-cat-btn { opacity: 1; }
+    .cat-item.active:hover .del-cat-btn:hover { color: #ff8080; background: rgba(255,255,255,0.15); }
+
+    /* ── Confirm dialog ── */
+    #confirm-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    #confirm-overlay.visible { display: flex; }
+    #confirm-box {
+      background: white; border-radius: 10px;
+      padding: 24px 28px; max-width: 320px; width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      text-align: center;
+    }
+    #confirm-box p { font-size: 1rem; margin-bottom: 18px; line-height: 1.5; color: #1a1a2e; }
+    #confirm-box strong { color: #2a2a50; }
+    .confirm-btns { display: flex; gap: 10px; justify-content: center; }
+    .btn-danger { background: #e94560; color: white; }
+    .btn-danger:hover { background: #c73050; }
+
     .add-cat-area { padding: 10px; border-top: 1px solid #ccc; display: flex; flex-direction: column; gap: 6px; }
     #add-cat-input {
       display: none; padding: 7px 10px; border: 1px solid #aaa;
@@ -124,13 +154,13 @@
 
 <header>
   <h1>🎲 קוביאות — עורך מילים</h1>
-  <button class="btn btn-primary" onclick="openFile()">📂 פתח categories.txt</button>
+  <button class="btn btn-primary" onclick="openFile()">📂 פתח קובץ</button>
   <span id="status"></span>
 </header>
 
 <div id="splash">
   <h2>עורך קטגוריות ומילים</h2>
-  <p>לחץ על "פתח categories.txt" כדי להתחיל</p>
+  <p>לחץ על "פתח קובץ" כדי להתחיל</p>
   <small>נדרש Edge או Chrome</small>
 </div>
 
@@ -158,6 +188,17 @@
     <div class="add-cat-area">
       <input type="text" id="add-cat-input" placeholder="שם קטגוריה חדשה..." spellcheck="false" />
       <button class="btn btn-secondary" id="btn-add-cat" onclick="toggleAddCat()" style="width:100%">+ קטגוריה חדשה</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm dialog -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <p id="confirm-msg"></p>
+    <div class="confirm-btns">
+      <button class="btn btn-danger" id="confirm-ok">מחק</button>
+      <button class="btn btn-secondary" id="confirm-cancel">ביטול</button>
     </div>
   </div>
 </div>
@@ -265,7 +306,26 @@ function renderCatList() {
   categories.forEach(cat => {
     const div = document.createElement('div');
     div.className = 'cat-item' + (cat === selectedCat ? ' active' : '');
-    div.innerHTML = `<span>${cat.name}</span><span class="cat-badge">${cat.words.length}</span>`;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = cat.name;
+
+    const badge = document.createElement('span');
+    badge.className = 'cat-badge';
+    badge.textContent = cat.words.length;
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del-cat-btn';
+    delBtn.title = 'מחק קטגוריה';
+    delBtn.textContent = '🗑️';
+    delBtn.addEventListener('click', async e => {
+      e.stopPropagation();
+      await deleteCategory(cat);
+    });
+
+    div.appendChild(nameSpan);
+    div.appendChild(badge);
+    div.appendChild(delBtn);
     div.onclick = () => selectCategory(cat);
     list.appendChild(div);
   });
@@ -310,12 +370,50 @@ function renderWords(highlightLast = false) {
   });
 }
 
+// ── Confirm dialog ────────────────────────────────────────────────────────
+function confirmDialog(msg) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-msg').innerHTML = msg;
+    const overlay = document.getElementById('confirm-overlay');
+    overlay.classList.add('visible');
+    const ok     = document.getElementById('confirm-ok');
+    const cancel = document.getElementById('confirm-cancel');
+    function close(result) {
+      overlay.classList.remove('visible');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlay);
+      resolve(result);
+    }
+    function onOk()      { close(true); }
+    function onCancel()  { close(false); }
+    function onOverlay(e) { if (e.target === overlay) close(false); }
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlay);
+  });
+}
+
+async function deleteCategory(cat) {
+  const wordCount = cat.words.length;
+  const detail = wordCount > 0 ? ` (${wordCount} מילים)` : '';
+  const confirmed = await confirmDialog(`למחוק את הקטגוריה <strong>${cat.name}</strong>${detail}?`);
+  if (!confirmed) return;
+  categories = categories.filter(c => c !== cat);
+  if (selectedCat === cat) {
+    selectedCat = null;
+    renderWords();
+  }
+  await saveFile();
+  renderCatList();
+}
+
 // ── Actions ───────────────────────────────────────────────────────────────
 function selectCategory(cat) {
   selectedCat = cat;
   renderCatList();
   renderWords();
-  setTimeout(() => document.getElementById('word-input').value = '' || document.getElementById('word-input').focus(), 30);
+  setTimeout(() => { const i = document.getElementById('word-input'); i.value = ''; i.focus(); }, 30);
 }
 
 function toggleAddCat() {
