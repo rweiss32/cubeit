@@ -1033,7 +1033,7 @@ function cancelJoker() {
   document.getElementById('joker-modal').classList.remove('open');
 }
 
-function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
+function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum, assignedPositions = []) {
   return new Promise(resolve => {
     _jokerResolve = resolve;
     const modal = document.getElementById('joker-modal');
@@ -1047,9 +1047,12 @@ function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
     preview.innerHTML = '';
     tiles.forEach((letter, idx) => {
       const d = document.createElement('div');
-      if (letter === '★') {
-        d.className = 'joker-word-tile ' + (idx === jokerWordPos ? 'jwt-joker' : 'jwt-assigned');
-        d.textContent = idx === jokerWordPos ? '★' : (d._assigned || '?');
+      if (idx === jokerWordPos) {
+        d.className = 'joker-word-tile jwt-joker';
+        d.textContent = '★';
+      } else if (assignedPositions.includes(idx)) {
+        d.className = 'joker-word-tile jwt-assigned';
+        d.textContent = letter;
       } else {
         d.className = 'joker-word-tile jwt-normal';
         d.textContent = letter;
@@ -1090,11 +1093,13 @@ function askJokerLetter(tiles, jokerWordPos, totalJokers, jokerNum) {
 async function resolveJokers(tiles) {
   const result = [...tiles];
   const jokerPositions = result.map((t, i) => t === '★' ? i : -1).filter(i => i !== -1);
+  const assignedPositions = [];
   let jokerNum = 1;
   for (const pos of jokerPositions) {
-    const chosen = await askJokerLetter(result, pos, jokerPositions.length, jokerNum++);
+    const chosen = await askJokerLetter(result, pos, jokerPositions.length, jokerNum++, assignedPositions);
     if (chosen === null) return null;
     result[pos] = chosen;
+    assignedPositions.push(pos);
   }
   return result;
 }
