@@ -5,6 +5,10 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.22.0] 2026-03-27 — Expanded word lists
+
+- Added many new words across categories in data/categories.txt
+
 ## [0.21.2] 2026-03-27 — words-editor tool improvements
 
 - Renamed tool to cube-it-words-editor.html
