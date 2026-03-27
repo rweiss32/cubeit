@@ -5,6 +5,11 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.23.4] 2026-03-28 — fix: joker modal closes immediately on multi-joker words
+
+- Fixed bug where picking the first joker letter immediately cancelled the second joker modal
+- Root cause: click event bubbled to a stale onOutside listener after the letter grid was rebuilt, with a detached target that tricked closest() into returning null
+
 ## [0.23.3] 2026-03-28 — fix: show assigned letters in multi-joker preview
 
 - Fixed bug where already-assigned jokers always showed '?' in the preview when assigning multiple jokers
