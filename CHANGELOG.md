@@ -5,6 +5,13 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.21.0] 2026-03-27 — Drag tile to word-builder area
+
+- Long-press a tile and drag it to the word-builder area to add it to the word
+- Word area highlights with a dashed green border when hovered during drag
+- Tile shifts in the tray reset when hovering over the word area
+- Complements short-press — both gestures still work
+
 ## [0.20.0] 2026-03-27 — Drag to reorder tiles
 
 - Long-press a tile (400ms) to drag it to a new position in the tray
