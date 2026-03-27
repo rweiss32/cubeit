@@ -5,6 +5,11 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.23.2] 2026-03-28 — chore: add /web-code-review skill
+
+- Added `/web-code-review` Claude Code skill for expert HTML/CSS/JS review
+- Covers bugs, security, readability, accessibility, performance, and mobile
+
 ## [0.23.1] 2026-03-28 — fix: center word in Wikipedia panel
 
 - Centered the word title in the Wikipedia bottom sheet header
