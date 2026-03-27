@@ -8,7 +8,6 @@ const STATIC = [
   '/manifest.json',
   '/data/categories.js',
   '/assets/logo.png',
-  '/assets/logo_heb.png',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
 ];
