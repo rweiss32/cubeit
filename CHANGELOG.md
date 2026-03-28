@@ -5,6 +5,10 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.25.1] 2026-03-28 — fix: clarify tiles label to mention drag-to-reorder
+
+- Updated tiles section label to "לחץ על אות כדי להוסיף למילה או גרור כדי לסדר:" — now mentions both tap and drag gestures
+
 ## [0.25.0] 2026-03-28 — replace auto Wikipedia popup with clickable W icon next to each word
 
 - Wikipedia no longer auto-pops after a round; a circled serif W button appears next to each word when a Wikipedia article exists
