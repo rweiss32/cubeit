@@ -5,6 +5,12 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.23.9] 2026-03-28 — chore: DOM query caching, magic number constants, inline styles to CSS classes
+
+- Cached g-timer-bar, g-tiles, and g-word-preview DOM references to avoid repeated lookups in hot paths
+- Extracted CPU thinking delay values into named constants (CPU_THINK_BASE_MS, etc.)
+- Replaced inline styles on game/result screen elements with CSS classes
+
 ## [0.23.8] 2026-03-28 — fix: replace innerHTML with safe DOM construction
 
 - Replaced innerHTML in suggestions and game-over score with DOM API calls

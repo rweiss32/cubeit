@@ -371,6 +371,22 @@
     .rt-used { opacity: 1; }
     .rt-unused { opacity: .25; }
 
+    /* ── SCORE BAR HELPERS ── */
+    .score-bar-center { text-align: center; }
+    .score-bar-round  { font-weight: 700; }
+    .score-bar-label  { font-size: .85rem; color: var(--text-muted); }
+    .cpu-name-inline  { font-size: .8rem; color: var(--text-muted); }
+
+    /* ── CPU REACTION ── */
+    .cpu-reaction { min-height: 1.4em; font-size: 1rem; color: var(--text-muted); margin: 6px 0 2px; }
+
+    /* ── INFO BOXES (suggestions / warning) ── */
+    .info-box {
+      margin: 10px auto; max-width: 360px; padding: 8px 14px;
+      border-radius: 8px; background: var(--bg-card); font-size: 0.9rem; display: none;
+    }
+    .info-box-warning { color: #b8860b; }
+
     /* ── GAME OVER ── */
     #screen-gameover { text-align: center; }
     .gameover-title { font-size: 3rem; font-weight: 900; margin-bottom: 8px; }
@@ -415,11 +431,11 @@
 <div id="screen-game" class="screen">
   <div class="score-bar">
     <div>🧑 <span class="score-num" id="g-player-score">0</span></div>
-    <div style="text-align:center">
+    <div class="score-bar-center">
       <div class="round-label">סיבוב</div>
-      <div style="font-weight:700" id="g-round">1 / 5</div>
+      <div class="score-bar-round" id="g-round">1 / 5</div>
     </div>
-    <div>🧑 <span class="cpu-name-label" style="font-size:.8rem;color:var(--text-muted)"></span> <span class="score-num" id="g-cpu-score">0</span></div>
+    <div>🧑 <span class="cpu-name-label cpu-name-inline"></span> <span class="score-num" id="g-cpu-score">0</span></div>
   </div>
 
   <div class="def-card">
@@ -471,17 +487,17 @@
     </div>
   </div>
 
-  <div id="r-cpu-reaction" style="min-height:1.4em;font-size:1rem;color:var(--text-muted);margin:6px 0 2px;"></div>
+  <div id="r-cpu-reaction" class="cpu-reaction"></div>
 
   <div class="score-bar">
     <div>🧑 <span class="score-num" id="r-player-score">0</span></div>
-    <div style="color:#888;font-size:.85rem">ניקוד</div>
-    <div>🧑 <span class="cpu-name-label" style="font-size:.85rem;color:#888"></span> <span class="score-num" id="r-cpu-score">0</span></div>
+    <div class="score-bar-label">ניקוד</div>
+    <div>🧑 <span class="cpu-name-label cpu-name-inline"></span> <span class="score-num" id="r-cpu-score">0</span></div>
   </div>
 
-  <div id="r-suggestions" style="margin:10px auto;max-width:360px;padding:8px 14px;border-radius:8px;background:var(--bg-card);font-size:0.9rem;display:none;"></div>
+  <div id="r-suggestions" class="info-box"></div>
 
-  <div id="r-warning" style="margin:10px auto;max-width:360px;padding:8px 14px;border-radius:8px;background:var(--bg-card);color:#b8860b;font-size:0.9rem;display:none;"></div>
+  <div id="r-warning" class="info-box info-box-warning"></div>
 
 <button class="btn btn-gold" id="r-next-btn" onclick="soundClick();nextRound()">סיבוב הבא ▶</button>
 </div>
@@ -540,7 +556,7 @@
 </div>
 
 <script>
-const VERSION = '0.23.8';
+const VERSION = '0.23.9';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 // ══════════════════════════════════════════════
@@ -613,6 +629,10 @@ function loadCategories() {
   CARD_KEYS = arr.map(c => c.category);
 }
 const MAX_ROUNDS = 5;
+const CPU_THINK_BASE_MS       = 1500;
+const CPU_THINK_PER_LETTER_MS = 250;
+const CPU_THINK_MAX_LETTERS   = 7;
+const CPU_THINK_JITTER_MS     = 1000;
 
 // ══════════════════════════════════════════════
 //  STATE
@@ -776,10 +796,11 @@ function startTimer() {
 function updateTimerUI() {
   const s = state.timerSecs;
   const el = document.getElementById('g-timer');
+  const bar = document.getElementById('g-timer-bar');
   el.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   el.className = 'timer' + (s <= 15 ? ' urgent' : '');
-  document.getElementById('g-timer-bar').style.width = (s / 120 * 100) + '%';
-  document.getElementById('g-timer-bar').style.background = s <= 15 ? '#ff6b6b' : '#4ecca3';
+  bar.style.width = (s / 120 * 100) + '%';
+  bar.style.background = s <= 15 ? '#ff6b6b' : '#4ecca3';
 }
 
 // ══════════════════════════════════════════════
@@ -813,9 +834,12 @@ function initTileDrag(btn, i) {
   let lastX        = 0, lastY = 0;
   let overWordArea = false;
 
+  const tilesContainer = document.getElementById('g-tiles');
+  const wordPreviewEl  = document.getElementById('g-word-preview');
+  let cachedTileEls = null;
+
   function getTileShift() {
-    const container = document.getElementById('g-tiles');
-    const tiles = [...container.querySelectorAll('[data-tile-index]')];
+    const tiles = [...tilesContainer.querySelectorAll('[data-tile-index]')];
     if (tiles.length < 2) return 66;
     const r0 = tiles[0].getBoundingClientRect();
     const r1 = tiles[1].getBoundingClientRect();
@@ -825,7 +849,7 @@ function initTileDrag(btn, i) {
   function applyPreview(toIndex) {
     if (toIndex === currentTo) return;
     currentTo = toIndex;
-    document.getElementById('g-tiles').querySelectorAll('[data-tile-index]').forEach(el => {
+    cachedTileEls.forEach(el => {
       const idx = parseInt(el.dataset.tileIndex);
       if (idx === i) return;
       let dx = 0;
@@ -836,20 +860,20 @@ function initTileDrag(btn, i) {
   }
 
   function resetPreview() {
-    const container = document.getElementById('g-tiles');
-    container.classList.remove('tiles-dragging');
-    container.querySelectorAll('[data-tile-index]').forEach(el => el.style.transform = '');
-    document.getElementById('g-word-preview').classList.remove('drop-target');
+    tilesContainer.classList.remove('tiles-dragging');
+    cachedTileEls?.forEach(el => el.style.transform = '');
+    wordPreviewEl.classList.remove('drop-target');
     overWordArea = false;
   }
 
   function startDrag(clientX, clientY) {
     dragging = true;
     currentTo = i;
+    cachedTileEls = [...tilesContainer.querySelectorAll('[data-tile-index]')];
     shiftPx = getTileShift();
     if (navigator.vibrate) navigator.vibrate(30);
 
-    document.getElementById('g-tiles').classList.add('tiles-dragging');
+    tilesContainer.classList.add('tiles-dragging');
 
     const rect = btn.getBoundingClientRect();
     offsetX = clientX - rect.left;
@@ -873,20 +897,19 @@ function initTileDrag(btn, i) {
     clone.style.left = (clientX - offsetX) + 'px';
     clone.style.top  = (clientY - offsetY) + 'px';
 
-    const wordPreview = document.getElementById('g-word-preview');
-    const wr = wordPreview.getBoundingClientRect();
+    const wr = wordPreviewEl.getBoundingClientRect();
     const hovering = clientX >= wr.left && clientX <= wr.right && clientY >= wr.top && clientY <= wr.bottom;
 
     if (hovering) {
       if (!overWordArea) {
         overWordArea = true;
-        wordPreview.classList.add('drop-target');
+        wordPreviewEl.classList.add('drop-target');
         applyPreview(i); // reset tile shifts — not reordering
       }
     } else {
       if (overWordArea) {
         overWordArea = false;
-        wordPreview.classList.remove('drop-target');
+        wordPreviewEl.classList.remove('drop-target');
       }
       const el = document.elementFromPoint(clientX, clientY);
       const target = el?.closest('[data-tile-index]');
@@ -1312,7 +1335,7 @@ async function endRound(playerWord, warning) {
   showScreen('screen-result');
 
   // Thinking delay: 1.5–4s, longer for longer words
-  const thinkMs = 1500 + Math.min(cw.length, 7) * 250 + Math.random() * 1000;
+  const thinkMs = CPU_THINK_BASE_MS + Math.min(cw.length, CPU_THINK_MAX_LETTERS) * CPU_THINK_PER_LETTER_MS + Math.random() * CPU_THINK_JITTER_MS;
   await new Promise(r => setTimeout(r, thinkMs));
 
   // Animate thinking dots while "waiting"
