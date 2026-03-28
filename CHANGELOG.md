@@ -5,6 +5,11 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.23.15] 2026-03-28 — fix: focus trap for joker modal and settings sheet
+
+- Added `trapFocus(container, e)` helper that constrains Tab/Shift+Tab cycling to focusable elements within a dialog
+- Joker modal and settings sheet key handlers now call `trapFocus` on Tab, preventing focus from escaping to background content
+
 ## [0.23.14] 2026-03-28 — chore: settings checkbox a11y, tile size in compact layout, merge duplicate CSS, visible class for info boxes, aria-hidden emojis, DOM caching in render loop
 
 - Fixed settings toggles missing accessible names (`aria-label` on each checkbox); added `.tile` to compact breakpoint so 8 tiles fit in one row on phones; merged duplicate `.joker-box` CSS rule

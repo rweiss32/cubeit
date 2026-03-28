@@ -582,7 +582,7 @@
 </div>
 
 <script>
-const VERSION = '0.23.14';
+const VERSION = '0.23.15';
 document.getElementById('header-version').textContent = 'v' + VERSION;
 
 // ══════════════════════════════════════════════
@@ -611,12 +611,25 @@ function openSettings() {
 
 function onSettingsKey(e) {
   if (e.key === 'Escape') closeSettings();
+  else if (e.key === 'Tab') trapFocus(document.getElementById('settings-sheet'), e);
 }
 
 function closeSettings() {
   document.getElementById('settings-sheet').classList.remove('open');
   document.removeEventListener('click', closeSettings);
   document.removeEventListener('keydown', onSettingsKey);
+}
+
+function trapFocus(container, e) {
+  const focusable = [...container.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])')];
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last  = focusable[focusable.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+  } else {
+    if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+  }
 }
 
 function syncBodyPadding() {
@@ -1088,6 +1101,7 @@ let _jokerResolve = null;
 
 function onJokerKey(e) {
   if (e.key === 'Escape') cancelJoker();
+  else if (e.key === 'Tab') trapFocus(document.getElementById('joker-modal'), e);
 }
 
 function cancelJoker() {
