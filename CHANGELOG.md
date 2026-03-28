@@ -5,6 +5,10 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.23.6] 2026-03-28 — fix: timer bar width on narrow screens
+
+- Changed `.timer-bar-bg` from fixed `300px` to `100%` to prevent horizontal overflow on small devices
+
 ## [0.23.5] 2026-03-28 — chore: support full file review mode in /web-code-review skill
 
 - `/web-code-review <filename>` now reads and reviews the entire file instead of just the diff
