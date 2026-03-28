@@ -5,6 +5,12 @@ All notable changes to **קוביאות (Kubiyot)** will be documented here.
 Format: `[version] YYYY-MM-DD — description`
 
 ---
+## [0.24.0] 2026-03-28 — expand all category word lists to 200+ words
+
+- Expanded every category in `data/categories.txt` to at least 200 words
+- Added thematically appropriate Hebrew words (max 8 letters) across all 35 categories
+- Regenerated `data/categories.js` from updated source
+
 ## [0.23.17] 2026-03-28 — chore: project structure cleanup and README
 
 - Added README.md with project overview, local dev instructions, word list editing guide, and hooks setup
